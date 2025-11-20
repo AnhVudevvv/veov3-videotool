@@ -1,0 +1,148 @@
+// app/page.tsx
+'use client';
+
+import { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
+import { ConfigPanel } from '@/components/config-panel';
+import { PromptUploader } from '@/components/prompt-uploader';
+import { BatchProcessor } from '@/components/batch-processor';
+import { ProgressDashboard } from '@/components/progress-dashboard';
+import { VideoDownloader } from '@/components/video-downloader';
+import { VideoMergerWasm } from '@/components/VideoMergerWasm'; // ĐỔI IMPORT
+import type { AspectRatio } from '../type';
+
+interface AppConfig {
+  geminiApiKey: string;
+  batchSize: number;
+  aspectRatio: AspectRatio;
+  durationSeconds: number; // THÊM MỚI
+}
+
+export default function Home() {
+  const [config, setConfig] = useState<AppConfig>({
+    geminiApiKey: '',
+    batchSize: 5,
+    aspectRatio: '16:9',
+    durationSeconds: 8, // THÊM MỚI
+  });
+
+  const [scenes, setScenes] = useState<string[]>([]);
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const handleConfigChange = (newConfig: AppConfig) => {
+    setConfig(newConfig);
+    sessionStorage.setItem('veoApiKey', newConfig.geminiApiKey);
+    localStorage.setItem(
+      'veoConfig',
+      JSON.stringify({
+        batchSize: newConfig.batchSize,
+        aspectRatio: newConfig.aspectRatio,
+        durationSeconds: newConfig.durationSeconds, // THÊM MỚI
+      })
+    );
+  };
+
+  const handlePromptParsed = (parsedScenes: string[]) => {
+    setScenes(parsedScenes);
+    setVideoUrls([]);
+    setErrors([]);
+  };
+
+  const handleBatchComplete = (newUrl: string) => {
+    setVideoUrls((prev) => [...prev, newUrl]);
+  };
+
+  const handleError = (errorMsg: string) => {
+    setErrors((prev) => [...prev, errorMsg]);
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-900 text-white p-4 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+          Veo 3 Batch Video Generator
+        </h1>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* === CỘT BÊN TRÁI (SETUP) === */}
+          <div className="space-y-6">
+            <ConfigPanel 
+              config={config} 
+              onConfigChange={handleConfigChange} 
+            />
+            <PromptUploader 
+              onPromptParsed={handlePromptParsed} 
+              disabled={isProcessing} 
+            />
+          </div>
+
+          {/* === CỘT BÊN PHẢI (PROCESSING & RESULTS) === */}
+          <div className="space-y-6">
+            <BatchProcessor
+              scenes={scenes}
+              config={config}
+              batchSize={config.batchSize}
+              onBatchComplete={handleBatchComplete}
+              onProcessingStart={() => {
+                setIsProcessing(true);
+                setErrors([]);
+              }}
+              onProcessingEnd={() => setIsProcessing(false)}
+              onError={handleError}
+              disabled={
+                isProcessing || 
+                scenes.length === 0 || 
+                !config.geminiApiKey
+              }
+            />
+
+            {/* Hiển thị lỗi (nếu có) */}
+            {errors.length > 0 && (
+              <div className="p-4 bg-red-900/50 border border-red-700 rounded-lg space-y-2">
+                <h3 className="font-semibold text-red-400 flex items-center gap-2">
+                  <AlertTriangle size={16} /> Lỗi Xử Lý
+                </h3>
+                <ul className="list-disc list-inside text-sm text-red-300 max-h-32 overflow-y-auto">
+                  {errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <ProgressDashboard
+              progress={{
+                completed: videoUrls.length,
+                total: scenes.length,
+                currentBatch: 0,
+                videoUrls: videoUrls,
+              }}
+              isProcessing={isProcessing}
+            />
+
+            {/* === PHẦN MỚI: VIDEO MERGER - GHÉP THÀNH VIDEO DÀI === */}
+            {videoUrls.length > 0 && !isProcessing && (
+              <>
+                {/* Nút ghép video - Hiển thị đầu tiên */}
+                <VideoMergerWasm
+                  videoUrls={videoUrls}
+                  apiKey={config.geminiApiKey}
+                  disabled={isProcessing}
+                  durationSeconds={config.durationSeconds} // THÊM MỚI
+                />
+                
+                {/* Nút download riêng lẻ - Hiển thị sau */}
+                <VideoDownloader
+                  videoUrls={videoUrls}
+                  apiKey={config.geminiApiKey}
+                />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
