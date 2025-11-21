@@ -1,76 +1,172 @@
-// app/api/generate-video/route.ts
+// app/api/generate-video/route.ts (FIXED - STRONGER ENFORCEMENT)
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenAI, Operation } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prompt, geminiApiKey,sceneContext,seed, aspectRatio } = body;
+    const { 
+      prompt, 
+      geminiApiKey, 
+      seed, 
+      aspectRatio,
+      sceneContext,
+      isFirstScene,
+      referenceImage,
+      durationSeconds = 8
+    } = body;
+
+    console.log('[API] Request:', {
+      promptLength: prompt?.length,
+      hasApiKey: !!geminiApiKey,
+      aspectRatio,
+      isFirstScene,
+      hasContext: !!sceneContext,
+      hasReferenceImage: !!referenceImage,
+      durationSeconds
+    });
 
     if (!prompt || !geminiApiKey || !aspectRatio) {
       return NextResponse.json(
-        { error: 'Missing required parameters (prompt, geminiApiKey, aspectRatio)' },
+        { error: 'Missing required parameters' },
         { status: 400 }
       );
     }
 
     const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-    let enhancedPrompt = prompt;
-    if (sceneContext) {
-      enhancedPrompt = `${sceneContext}\n\nContinuing from the previous scene:\n${prompt}`;
-    }
-    console.log(`[API] Đang tạo video cho: ${prompt.substring(0, 30)}...`);
+    
+    // ═══════════════════════════════════════════════════════════
+    // CRITICAL: BUILD ULTRA-STRICT PROMPT
+    // ═══════════════════════════════════════════════════════════
+    let finalPrompt = prompt;
+    
+    if (sceneContext && !isFirstScene) {
+      // SUPER STRICT ENFORCEMENT
+      finalPrompt = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ CRITICAL REQUIREMENT - THIS IS MANDATORY ⚠️
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    // 2. Gọi API Veo
+YOU MUST REPLICATE THIS EXACT VISUAL CONTEXT:
+
+${sceneContext}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 FORBIDDEN CHANGES:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+DO NOT change:
+❌ Environment/room/location
+❌ Lighting setup, direction, color temperature
+❌ Camera angle, height, lens
+❌ Character appearance, age, clothing
+❌ Furniture, props, background elements
+❌ Color grading, visual style
+❌ Time of day indication
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ ONLY CHANGE THIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${prompt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎬 INSTRUCTION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is the EXACT SAME SHOT from the previous scene.
+The camera has NOT moved.
+The lighting has NOT changed.
+The environment is IDENTICAL.
+Only the character's action/position changes.
+
+Think of this as a continuous single shot where only the subject moves.`;
+
+      console.log('[API] 🔒 Using STRICT context enforcement');
+      console.log('[API] Context preview:', sceneContext.substring(0, 200) + '...');
+    }
+
+    // Build config
+    const config: any = {
+      numberOfVideos: 1,
+      resolution: '720p',
+      aspectRatio: aspectRatio as '16:9' | '9:16',
+      randomSeed: seed ? parseInt(seed) : undefined,
+      durationSeconds: durationSeconds || 8,
+    };
+
+    // Add reference image if available
+    if (referenceImage && !isFirstScene) {
+      config.referenceImage = {
+        imageData: referenceImage,
+      };
+      console.log('[API] 🖼️ Using reference image for continuity');
+    }
+
+    console.log('[API] 📹 Calling Veo API...');
+
+    // Generate video
     let operation = await ai.models.generateVideos({
-      model: 'veo-3.1-generate-preview', // dùng model (có sự lựa chọn)
-      prompt: enhancedPrompt,
-      config: {
-        numberOfVideos: 1,
-        resolution: '720p',
-        aspectRatio: aspectRatio as '16:9' | '9:16',
-        randomSeed: seed ? parseInt(seed) : undefined,
-        // durationSeconds: 30
-      }as any,
+      model: 'veo-3.1-generate-preview',
+      prompt: finalPrompt,
+      config: config,
     });
 
-    console.log('[API] Đang chờ video render (polling)...');
+    console.log('[API] ⏳ Polling for completion...');
 
-    // 3. Polling để kiểm tra
+    // Polling loop
+    let pollCount = 0;
     while (!operation.done) {
-      await new Promise((resolve) => setTimeout(resolve, 10000)); // Chờ 10 giây
+      await new Promise((resolve) => setTimeout(resolve, 10000));
+      pollCount++;
+      
       try {
         operation = await ai.operations.getVideosOperation({
           operation: operation,
         });
+        console.log(`[API] Poll ${pollCount}: ${operation.done ? 'Complete' : 'In Progress'}`);
       } catch (error) {
-        console.error('[API] Lỗi khi polling:', error);
+        console.error('[API] Polling error:', error);
         if (error instanceof Error && error.message.includes("404")) {
-          throw new Error("Lỗi Polling: Operation không tìm thấy. API key có thể đã hết hạn hoặc không hợp lệ.");
+          throw new Error("Operation not found. API key may be invalid.");
         }
-        throw new Error('Lỗi trong quá trình polling');
+        throw new Error('Polling failed');
       }
     }
 
-    // 4. Lấy link tải video (đây là link GCS)
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
 
     if (!downloadLink) {
-      console.error('[API] Xong, nhưng không tìm thấy link video.');
       throw new Error('Video generation failed: No download link found.');
     }
 
-    console.log('[API] ✓ Đã tạo video. Gửi GCS URL về client.');
+    console.log('[API] ✅ Video generated successfully');
+    console.log('[API] URL:', downloadLink.substring(0, 60) + '...');
 
-    // 5. TRẢ VỀ GCS URL (KHÔNG phải Base64)
-    //    Đây là thay đổi quan trọng nhất để tránh lỗi payload size
-    return NextResponse.json({ gcsUrl: downloadLink });
+    return NextResponse.json({ 
+      gcsUrl: downloadLink,
+      success: true,
+      usedContext: !isFirstScene && !!sceneContext,
+      usedReferenceImage: !isFirstScene && !!referenceImage
+    });
 
   } catch (error) {
-    console.error('❌ [API] Lỗi nghiêm trọng:', error);
+    console.error('❌ [API] Error:', error);
+    
+    if (error instanceof Error) {
+      console.error('   Message:', error.message);
+      console.error('   Stack:', error.stack);
+    }
+    
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error occurred' },
+      { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        success: false,
+        details: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
 }
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';

@@ -1,136 +1,174 @@
-// components/ConfigPanel.tsx
+// components/config-panel.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import type { AspectRatio } from '../type'; // Bạn cần tạo file này
-
-// Tạo file 'src/types.ts' (hoặc 'types.ts' ở gốc)
-// export type AspectRatio = '16:9' | '9:16';
+import { useEffect, useState } from 'react';
+import { Settings, Key, Layers, Ratio, Clock } from 'lucide-react';
+import type { AspectRatio } from '../type';
+import { Eye, EyeOff } from "lucide-react";
 
 interface ConfigPanelProps {
   config: {
     geminiApiKey: string;
     batchSize: number;
-    aspectRatio: string;
+    aspectRatio: AspectRatio;
+    durationSeconds: number;
   };
-  onConfigChange: (config: any) => void;
+  onConfigChange: (config: {
+    geminiApiKey: string;
+    batchSize: number;
+    aspectRatio: AspectRatio;
+    durationSeconds: number;
+  }) => void;
 }
 
 export function ConfigPanel({ config, onConfigChange }: ConfigPanelProps) {
-  const [showKey, setShowKey] = useState(false);
-  const [localConfig, setLocalConfig] = useState(config);
-
+  // Load saved config từ localStorage khi component mount
   useEffect(() => {
-    // Tải config (không có key) từ localStorage
-    const saved = localStorage.getItem('veoConfig');
-    // Tải key từ sessionStorage
-    const apiKey = sessionStorage.getItem('veoApiKey');
-    
-    let needsUpdate = false;
-    let newConfig = { ...localConfig };
+    const savedApiKey = sessionStorage.getItem('veoApiKey');
+    const savedConfig = localStorage.getItem('veoConfig');
 
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      newConfig = { ...newConfig, ...parsed };
-      needsUpdate = true;
+    if (savedApiKey || savedConfig) {
+      onConfigChange({
+        geminiApiKey: savedApiKey || config.geminiApiKey,
+        ...(savedConfig ? JSON.parse(savedConfig) : {
+          batchSize: config.batchSize,
+          aspectRatio: config.aspectRatio,
+          durationSeconds: config.durationSeconds,
+        }),
+      });
     }
-    
-    if (apiKey) {
-      newConfig.geminiApiKey = apiKey;
-      needsUpdate = true;
-    }
-
-    if (needsUpdate) {
-      setLocalConfig(newConfig);
-      onConfigChange(newConfig);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleChange = (field: string, value: string | number) => {
-    const updated = { ...localConfig, [field]: value };
-    setLocalConfig(updated);
-    onConfigChange(updated);
+  const handleChange = (field: keyof typeof config, value: string | number) => {
+    const newConfig = { ...config, [field]: value };
+    onConfigChange(newConfig);
   };
-
+  const [showPassword, setShowPassword] = useState(false);
   return (
-    <div className="p-6 bg-slate-800 border border-slate-700 rounded-lg">
-      <h2 className="text-lg font-semibold text-white mb-6">API Configuration</h2>
+    <div className="p-6 bg-slate-800/50 backdrop-blur border border-slate-700 rounded-lg space-y-4">
+      <div className="flex items-center gap-2 mb-4">
+        <Settings className="text-cyan-400" size={24} />
+        <h2 className="text-xl font-semibold text-white">Configuration</h2>
+      </div>
 
-      <div className="space-y-4">
-        {/* Gemini API Key */}
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Gemini API Key
-          </label>
-          <div className="relative">
-            <input
-              type={showKey ? 'text' : 'password'}
-              value={localConfig.geminiApiKey}
-              onChange={(e) => handleChange('geminiApiKey', e.target.value)}
-              placeholder="Enter Gemini API Key"
-              className="w-full pr-10 px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
-            />
-            <button
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-300"
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Lấy từ aistudio.google.com
-          </p>
-        </div>
+      {/* API Key */}
+      {/* API Key */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <Key size={16} className="text-cyan-400" />
+          Gemini API Key
+        </label>
 
-        {/* Xóa Labs Project ID */}
-        {/* Xóa Labs Token */}
-
-        {/* Aspect Ratio */}
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Aspect Ratio
-          </label>
-          <div className="flex gap-2">
-            {(['16:9', '9:16'] as const).map(ratio => (
-              <button
-                key={ratio}
-                onClick={() => handleChange('aspectRatio', ratio)}
-                className={`flex-1 p-2 rounded-md text-sm font-semibold transition-colors ${
-                  localConfig.aspectRatio === ratio
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-                }`}
-              >
-                {ratio === '16:9' ? 'Landscape (16:9)' : 'Portrait (9:16)'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Batch Size */}
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">
-            Batch Size
-          </label>
+        <div className="relative">
           <input
-            type="number"
-            value={localConfig.batchSize}
-            onChange={(e) => handleChange('batchSize', parseInt(e.target.value))}
-            min="1"
-            max="10"
-            className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white"
+            type={showPassword ? "text" : "password"}
+            value={config.geminiApiKey}
+            onChange={(e) => handleChange('geminiApiKey', e.target.value)}
+            placeholder="Enter your Gemini API key"
+            className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
           />
-          <p className="text-xs text-slate-500 mt-1">
-            Số cảnh xử lý mỗi lần (1-10)
-          </p>
+
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </div>
 
-        <div className="pt-4 border-t border-slate-700">
-          <p className="text-xs text-slate-400">
-            ✓ Config (ngoại trừ API key) được lưu vào local storage.
-          </p>
+        <p className="text-xs text-slate-500">
+          Get your API key from{" "}
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-cyan-400 hover:text-cyan-300 underline"
+          >
+            Google AI Studio
+          </a>
+        </p>
+      </div>
+
+
+      {/* Batch Size */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <Layers size={16} className="text-cyan-400" />
+          Batch Delay (seconds)
+        </label>
+        <input
+          type="number"
+          min="1"
+          max="60"
+          value={config.batchSize}
+          onChange={(e) => handleChange('batchSize', parseInt(e.target.value) || 5)}
+          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+        />
+        <p className="text-xs text-slate-500">
+          Delay between video generation requests (prevents rate limiting)
+        </p>
+      </div>
+
+      {/* Aspect Ratio */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <Ratio size={16} className="text-cyan-400" />
+          Aspect Ratio
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleChange('aspectRatio', '16:9')}
+            className={`px-4 py-2 rounded-lg font-medium transition ${config.aspectRatio === '16:9'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+          >
+            16:9 (Landscape)
+          </button>
+          <button
+            onClick={() => handleChange('aspectRatio', '9:16')}
+            className={`px-4 py-2 rounded-lg font-medium transition ${config.aspectRatio === '9:16'
+                ? 'bg-cyan-600 text-white'
+                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+          >
+            9:16 (Portrait)
+          </button>
+        </div>
+      </div>
+
+      {/* Duration */}
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+          <Clock size={16} className="text-cyan-400" />
+          Video Duration (seconds)
+        </label>
+        <input
+          type="number"
+          min="5"
+          max="8"
+          value={config.durationSeconds}
+          onChange={(e) => handleChange('durationSeconds', parseInt(e.target.value) || 8)}
+          className="w-full px-4 py-2 bg-slate-900 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+        />
+        <p className="text-xs text-slate-500">
+          Duration for each video scene (5-30 seconds)
+        </p>
+      </div>
+
+      {/* Status Info */}
+      <div className="pt-4 border-t border-slate-700">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-slate-500">API Status:</span>
+          <span
+            className={`px-2 py-1 rounded-full font-medium ${config.geminiApiKey
+                ? 'bg-green-900/50 text-green-400'
+                : 'bg-red-900/50 text-red-400'
+              }`}
+          >
+            {config.geminiApiKey ? '● Connected' : '○ Not Configured'}
+          </span>
         </div>
       </div>
     </div>
