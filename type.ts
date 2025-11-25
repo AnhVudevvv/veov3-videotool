@@ -17,3 +17,11 @@ export interface GeneratedClip {
 }
 
 export type AspectRatio = '16:9' | '9:16';
+
+export interface AppConfig {
+  geminiApiKey: string;
+  batchSize: number;
+  aspectRatio: AspectRatio;
+  durationSeconds: number;
+  globalContext: string;
+}

@@ -1,4 +1,4 @@
-// // components/BatchProcessor.tsx
+// components/BatchProcessor.tsx
 'use client';
 
 import { useState } from 'react';
@@ -11,8 +11,8 @@ interface BatchProcessorProps {
     geminiApiKey: string;
     batchSize: number;
     aspectRatio: string;
+    globalContext: string;
   };
-  batchSize: number;
   onBatchComplete: (videoUrl: string) => void;
   onProcessingStart: () => void;
   onProcessingEnd: () => void;
@@ -23,7 +23,6 @@ interface BatchProcessorProps {
 export function BatchProcessor({
   scenes,
   config,
-  batchSize,
   onBatchComplete,
   onProcessingStart,
   onProcessingEnd,
@@ -49,6 +48,7 @@ export function BatchProcessor({
           prompt: sceneDescription,
           geminiApiKey: config.geminiApiKey,
           aspectRatio: config.aspectRatio,
+          sceneContext: config.globalContext,
         }),
       });
 
@@ -64,41 +64,31 @@ export function BatchProcessor({
     }
   };
 
-  // **SỬA LỖI LOGIC TẠI ĐÂY**
   const processBatch = async (batchScenes: string[]) => {
-    // 1. Tạo một mảng các "lời hứa" (promises) gốc
-    //    Mảng này sẽ là: [Promise<string>, Promise<string>, ...]
     const promises = batchScenes.map(scene => generateVideoForScene(scene));
-
-    // 2. Chờ tất cả video trong batch hoàn thành (hoặc thất bại)
-    //    Kết quả (results) sẽ là một mảng [PromiseSettledResult<string>]
     const results = await Promise.allSettled(promises);
 
-    // 3. Xử lý kết quả bằng cách dùng chỉ mục (index)
     for (let i = 0; i < results.length; i++) {
-      if (isPausedRef.current) break; // Kiểm tra nếu bị tạm dừng
+      if (isPausedRef.current) break;
 
       const result = results[i];
-      const scene = batchScenes[i]; // Lấy scene tương ứng bằng chỉ mục
+      const scene = batchScenes[i];
 
       if (result.status === 'fulfilled') {
-        // KHẮC PHỤC: result.value bây giờ chính là GCS URL (string)
-        onBatchComplete(result.value); // Gửi GCS URL về state
+        onBatchComplete(result.value);
       } else {
-        // KHẮC PHỤC: result.reason là lỗi
         const errorMsg = result.reason instanceof Error ? result.reason.message : 'Unknown error';
         onError(`Lỗi cảnh "${scene.substring(0, 30)}...": ${errorMsg}`);
       }
     }
   };
-  // **KẾT THÚC SỬA LỖI**
 
   const handleStartProcessing = async () => {
     onProcessingStart();
     setIsPaused(false);
 
     try {
-      const totalBatches = Math.ceil(scenes.length / batchSize);
+      const totalBatches = Math.ceil(scenes.length / config.batchSize);
 
       for (let i = 0; i < totalBatches; i++) {
         if (isPausedRef.current) {
@@ -107,8 +97,8 @@ export function BatchProcessor({
 
         setCurrentStatus(`Đang xử lý batch ${i + 1}/${totalBatches}`);
 
-        const start = i * batchSize;
-        const end = Math.min(start + batchSize, scenes.length);
+        const start = i * config.batchSize;
+        const end = Math.min(start + config.batchSize, scenes.length);
         const batchScenes = scenes.slice(start, end);
 
         await processBatch(batchScenes);
@@ -132,25 +122,35 @@ export function BatchProcessor({
     }
   };
 
-  const totalBatches = Math.ceil(scenes.length / batchSize);
+  const totalBatches = Math.ceil(scenes.length / config.batchSize);
 
   return (
     <div className="p-6 bg-slate-800 border border-slate-700 rounded-lg">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-white mb-2">Batch Processing</h3>
         <p className="text-slate-400 text-sm">
-          {scenes.length} scenes will be processed in {totalBatches} batch{totalBatches !== 1 ? 'es' : ''} ({batchSize} per batch)
+          {scenes.length} scenes will be processed in {totalBatches} batch{totalBatches !== 1 ? 'es' : ''} ({config.batchSize} per batch)
         </p>
         {currentStatus && (
           <p className="text-cyan-400 text-sm mt-2">{currentStatus}</p>
         )}
+        
+        {config.globalContext && (
+          <div className="mt-3 p-3 bg-purple-900/20 border border-purple-500/30 rounded">
+            <p className="text-xs text-purple-300 font-semibold mb-1">
+              ✨ Using Global Context:
+            </p>
+            <p className="text-xs text-slate-400 line-clamp-3">
+              {config.globalContext}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* (Phần còn lại của JSX giữ nguyên...) */}
       <div className="space-y-3 max-h-64 overflow-y-auto">
         {Array.from({ length: totalBatches }).map((_, i) => {
-          const start = i * batchSize;
-          const end = Math.min(start + batchSize, scenes.length);
+          const start = i * config.batchSize;
+          const end = Math.min(start + config.batchSize, scenes.length);
           return (
             <div
               key={i}
@@ -166,6 +166,7 @@ export function BatchProcessor({
           );
         })}
       </div>
+      
       <div className="flex gap-3 mt-6">
         <button
           onClick={handleStartProcessing}
@@ -185,4 +186,3 @@ export function BatchProcessor({
     </div>
   );
 }
-// components/BatchProcessor.ts

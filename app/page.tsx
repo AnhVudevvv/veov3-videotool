@@ -8,22 +8,24 @@ import { PromptUploader } from '@/components/prompt-uploader';
 import { BatchProcessor } from '@/components/batch-processor';
 import { ProgressDashboard } from '@/components/progress-dashboard';
 import { VideoDownloader } from '@/components/video-downloader';
-import { VideoMergerWasm } from '@/components/VideoMergerWasm'; // ĐỔI IMPORT
+import { VideoMergerWasm } from '@/components/VideoMergerWasm';
 import type { AspectRatio } from '../type';
 
 interface AppConfig {
   geminiApiKey: string;
   batchSize: number;
   aspectRatio: AspectRatio;
-  durationSeconds: number; // THÊM MỚI
+  durationSeconds: number;
+  globalContext: string;
 }
 
 export default function Home() {
   const [config, setConfig] = useState<AppConfig>({
     geminiApiKey: '',
-    batchSize: 5,
+    batchSize: 3,
     aspectRatio: '16:9',
-    durationSeconds: 8, // THÊM MỚI
+    durationSeconds: 8,
+    globalContext: '',
   });
 
   const [scenes, setScenes] = useState<string[]>([]);
@@ -39,7 +41,8 @@ export default function Home() {
       JSON.stringify({
         batchSize: newConfig.batchSize,
         aspectRatio: newConfig.aspectRatio,
-        durationSeconds: newConfig.durationSeconds, // THÊM MỚI
+        durationSeconds: newConfig.durationSeconds,
+        globalContext: newConfig.globalContext,
       })
     );
   };
@@ -66,7 +69,7 @@ export default function Home() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* === CỘT BÊN TRÁI (SETUP) === */}
+          {/* LEFT COLUMN (SETUP) */}
           <div className="space-y-6">
             <ConfigPanel 
               config={config} 
@@ -78,12 +81,11 @@ export default function Home() {
             />
           </div>
 
-          {/* === CỘT BÊN PHẢI (PROCESSING & RESULTS) === */}
+          {/* RIGHT COLUMN (PROCESSING & RESULTS) */}
           <div className="space-y-6">
             <BatchProcessor
               scenes={scenes}
               config={config}
-              batchSize={config.batchSize}
               onBatchComplete={handleBatchComplete}
               onProcessingStart={() => {
                 setIsProcessing(true);
@@ -92,13 +94,13 @@ export default function Home() {
               onProcessingEnd={() => setIsProcessing(false)}
               onError={handleError}
               disabled={
-                isProcessing || 
-                scenes.length === 0 || 
+                isProcessing ||
+                scenes.length === 0 ||
                 !config.geminiApiKey
               }
             />
 
-            {/* Hiển thị lỗi (nếu có) */}
+            {/* Error Display */}
             {errors.length > 0 && (
               <div className="p-4 bg-red-900/50 border border-red-700 rounded-lg space-y-2">
                 <h3 className="font-semibold text-red-400 flex items-center gap-2">
@@ -116,24 +118,22 @@ export default function Home() {
               progress={{
                 completed: videoUrls.length,
                 total: scenes.length,
-                currentBatch: 0,
+                currentBatch: Math.ceil(videoUrls.length / config.batchSize),
                 videoUrls: videoUrls,
               }}
               isProcessing={isProcessing}
             />
 
-            {/* === PHẦN MỚI: VIDEO MERGER - GHÉP THÀNH VIDEO DÀI === */}
+            {/* VIDEO MERGER & DOWNLOADER */}
             {videoUrls.length > 0 && !isProcessing && (
               <>
-                {/* Nút ghép video - Hiển thị đầu tiên */}
                 <VideoMergerWasm
                   videoUrls={videoUrls}
                   apiKey={config.geminiApiKey}
                   disabled={isProcessing}
-                  durationSeconds={config.durationSeconds} // THÊM MỚI
+                  durationSeconds={config.durationSeconds}
                 />
                 
-                {/* Nút download riêng lẻ - Hiển thị sau */}
                 <VideoDownloader
                   videoUrls={videoUrls}
                   apiKey={config.geminiApiKey}
