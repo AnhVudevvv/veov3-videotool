@@ -14,44 +14,32 @@ export async function POST(request: Request) {
 
     console.log('Downloading video from:', gcsUrl);
 
-    // Tải video từ GCS với API key xác thực
-    const response = await fetch(gcsUrl, {
-      headers: {
-        'x-goog-api-key': geminiApiKey,
-      },
-    });
+    const response = await fetch(`${gcsUrl}&key=${geminiApiKey}`);
 
     if (!response.ok) {
-      console.error('GCS download failed:', response.status, response.statusText);
+      console.error('Download failed:', response.status);
       return NextResponse.json(
-        { error: `Failed to download video: ${response.status} ${response.statusText}` },
+        { error: `Download failed: ${response.statusText}` },
         { status: response.status }
       );
     }
 
-    // Lấy video buffer
     const videoBuffer = await response.arrayBuffer();
-    
-    console.log(`Video downloaded successfully: ${videoBuffer.byteLength} bytes`);
+    console.log(`Video downloaded: ${videoBuffer.byteLength} bytes`);
 
-    // Trả về video cho client
     return new NextResponse(videoBuffer, {
       headers: {
         'Content-Type': 'video/mp4',
         'Content-Length': videoBuffer.byteLength.toString(),
-        'Cache-Control': 'public, max-age=3600',
       },
     });
 
   } catch (error) {
-    console.error('Video download error:', error);
-    
+    console.error('Download error:', error);
     return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Download failed',
-        stack: error instanceof Error ? error.stack : undefined
-      },
+      { error: error instanceof Error ? error.message : 'Download failed' },
       { status: 500 }
     );
   }
 }
+
