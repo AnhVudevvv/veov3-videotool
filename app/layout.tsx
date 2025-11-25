@@ -1,8 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css'; // Đảm bảo bạn đã có file CSS này
-import { ThemeProvider } from '@/components/theme-provider'; // Đường dẫn tới component
+import './globals.css';
+import { ThemeProvider } from '@/components/theme-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -17,11 +17,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning ở đây để fix lỗi do next-themes sửa class của html
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      {/* Thêm suppressHydrationWarning vào body để fix lỗi do Extension chèn attribute lạ */}
+      <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark" // Set dark mode làm mặc định
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
