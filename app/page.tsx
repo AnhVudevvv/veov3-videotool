@@ -81,6 +81,10 @@ export default function Home() {
               onPromptParsed={handlePromptParsed} 
               disabled={isProcessing} 
             /> */}
+            <PromptUploader 
+              onPromptParsed={handlePromptParsed} 
+              disabled={isProcessing} 
+            />
           </div>
 
           {/* RIGHT COLUMN (PROCESSING & RESULTS) */}

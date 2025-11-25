@@ -1095,7 +1095,7 @@ interface ConfigPanelProps {
 export function ConfigPanel({ config, onConfigChange, onPromptParsed, disabled }: ConfigPanelProps) {
   const [showKey, setShowKey] = useState(false);
   const [localConfig, setLocalConfig] = useState(config);
-  const [showTutorial, setShowTutorial] = useState(false);
+  // const [showTutorial, setShowTutorial] = useState(false);
   
   // Description for characters/setting
   const [videoDescription, setVideoDescription] = useState('');
@@ -1281,7 +1281,7 @@ export function ConfigPanel({ config, onConfigChange, onPromptParsed, disabled }
         </div>
 
         {/* FILE UPLOAD - Actions/Scenes */}
-        <div className="space-y-3">
+        {/* <div className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-700"></div>
             <div className="flex items-center gap-2 px-3 py-1 bg-slate-700/50 rounded-full">
@@ -1371,15 +1371,15 @@ export function ConfigPanel({ config, onConfigChange, onPromptParsed, disabled }
             )}
           </div>
 
-          {/* <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-1.5">
+          <div className="p-3 bg-blue-900/20 border border-blue-500/30 rounded-lg space-y-1.5">
             <p className="text-xs text-blue-300 font-semibold">📹 File chứa các hành động theo thứ tự:</p>
             <div className="space-y-1 text-xs text-slate-300 ml-3">
               <p>• <span className="text-cyan-400 font-mono">Scene 1:</span> Baby crawling on carpet</p>
               <p>• <span className="text-cyan-400 font-mono">Scene 2:</span> Dog enters room, wagging tail</p>
               <p>• <span className="text-cyan-400 font-mono">Scene 3:</span> Baby sees dog, smiles</p>
             </div>
-          </div> */}
-        </div>
+          </div>
+        </div> */}
 
         {/* Quick Settings - Compact */}
         <div className="pt-4 border-t border-slate-700">
@@ -1462,126 +1462,7 @@ export function ConfigPanel({ config, onConfigChange, onPromptParsed, disabled }
       </div>
 
       {/* Tutorial Section */}
-      <div className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-xl overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setShowTutorial(!showTutorial)}
-          className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition"
-        >
-          <div className="flex items-center gap-3">
-            <HelpCircle size={20} className="text-blue-400" />
-            <span className="font-semibold text-white">Hướng dẫn sử dụng</span>
-          </div>
-          {showTutorial ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
-        </button>
-
-        {showTutorial && (
-          <div className="px-6 pb-6 space-y-6">
-            {/* Step 1 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-cyan-500 text-white font-bold flex items-center justify-center text-sm">
-                  1
-                </div>
-                <h3 className="font-bold text-white">Lấy API Key</h3>
-              </div>
-              <div className="ml-10 space-y-2 text-sm text-slate-300">
-                <p>• Truy cập: <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" className="text-cyan-400 underline">aistudio.google.com</a></p>
-                <p>• Click <strong className="text-white">"Create API key"</strong></p>
-                <p>• Copy và paste vào ô API Key</p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-purple-500 text-white font-bold flex items-center justify-center text-sm">
-                  2
-                </div>
-                <h3 className="font-bold text-white">Mô tả Nhân vật & Bối cảnh</h3>
-              </div>
-              <div className="ml-10 space-y-3 text-sm text-slate-300">
-                <p className="text-purple-300 font-semibold">👥 Phần này mô tả <u>chung</u> cho toàn bộ video:</p>
-                
-                <div className="space-y-2">
-                  <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                    <p className="text-xs font-bold text-cyan-400 mb-1">Style (Phong cách)</p>
-                    <p className="text-xs text-white">
-                      Pixar 3D / Anime / Realistic / Studio Ghibli...
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                    <p className="text-xs font-bold text-purple-400 mb-1">Characters (Nhân vật)</p>
-                    <p className="text-xs text-white">
-                      Mô tả CHI TIẾT: tuổi, tóc, mắt, quần áo, đặc điểm
-                    </p>
-                  </div>
-
-                  <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                    <p className="text-xs font-bold text-pink-400 mb-1">Setting (Bối cảnh)</p>
-                    <p className="text-xs text-white">
-                      Không gian, ánh sáng, màu sắc, đồ vật
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-green-500 text-white font-bold flex items-center justify-center text-sm">
-                  3
-                </div>
-                <h3 className="font-bold text-white">Upload File Hành động</h3>
-              </div>
-              <div className="ml-10 space-y-2 text-sm text-slate-300">
-                <p className="text-green-300 font-semibold">🎬 Phần này là các <u>hành động theo thứ tự</u>:</p>
-                <p>• Tạo file <code className="px-1.5 py-0.5 bg-slate-800 rounded text-cyan-400">.txt</code></p>
-                <p>• Mỗi dòng = 1 hành động/cảnh</p>
-                <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700 font-mono text-xs space-y-1">
-                  <p className="text-green-400">Baby crawling on carpet toward toys</p>
-                  <p className="text-green-400">Dog enters room, wagging tail happily</p>
-                  <p className="text-green-400">Baby sees dog, eyes widen, smiles</p>
-                  <p className="text-green-400">Baby reaches out hand to dog</p>
-                  <p className="text-green-400">Dog sniffs baby's hand gently</p>
-                </div>
-                <p className="text-amber-300 text-xs">⚡ Không cần mô tả lại nhân vật/bối cảnh, chỉ ghi hành động!</p>
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold flex items-center justify-center text-sm">
-                  4
-                </div>
-                <h3 className="font-bold text-white">Start & Download</h3>
-              </div>
-              <div className="ml-10 space-y-2 text-sm text-slate-300">
-                <p>• Click <strong className="text-cyan-400">"Start Processing"</strong></p>
-                <p>• Chờ xử lý (~70s/batch)</p>
-                <p>• Tải xuống hoặc ghép video</p>
-              </div>
-            </div>
-
-            {/* Tips */}
-            <div className="pt-4 border-t border-blue-500/30 space-y-2">
-              <h4 className="font-bold text-blue-300 text-sm flex items-center gap-2">
-                <Sparkles size={16} />
-                Pro Tips
-              </h4>
-              <ul className="space-y-1 text-xs text-slate-300 ml-6">
-                <li className="list-disc">Mô tả nhân vật/bối cảnh 1 lần → Tất cả scenes giống nhau</li>
-                <li className="list-disc">File actions chỉ ghi hành động ngắn gọn</li>
-                <li className="list-disc">Dùng tiếng Anh = chính xác hơn</li>
-                <li className="list-disc">10-20 scenes = video hoàn chỉnh</li>
-              </ul>
-            </div>
-          </div>
-        )}
-      </div>
+      
     </div>
   );
 }
