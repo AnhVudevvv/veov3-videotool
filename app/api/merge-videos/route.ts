@@ -1,5 +1,5 @@
 // app/api/merge-videos/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, unlink, readFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -8,7 +8,7 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const tempFiles: string[] = [];
   
   try {
@@ -21,17 +21,19 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`Starting merge process for ${videoUrls.length} videos`);
+    console.log(`[Merge] Starting merge process for ${videoUrls.length} videos`);
 
-    // Bước 1: Download tất cả video từ GCS với API key xác thực
+    // Step 1: Download all videos from GCS with API key authentication
     const videoBuffers = await Promise.all(
       videoUrls.map(async (url: string, index: number) => {
-        console.log(`Downloading video ${index + 1}/${videoUrls.length}`);
-        const response = await fetch(url, {
-          headers: {
-            'x-goog-api-key': geminiApiKey, // ✅ THÊM API KEY
-          },
-        });
+        console.log(`[Merge] Downloading video ${index + 1}/${videoUrls.length}`);
+        
+        // Add API key to GCS URL for authentication
+        const urlWithKey = url.includes('?') 
+          ? `${url}&key=${geminiApiKey}`
+          : `${url}?key=${geminiApiKey}`;
+        
+        const response = await fetch(urlWithKey);
         
         if (!response.ok) {
           throw new Error(`Failed to download video ${index + 1}: ${response.status} ${response.statusText}`);
@@ -41,9 +43,9 @@ export async function POST(request: Request) {
       })
     );
 
-    console.log('All videos downloaded successfully');
+    console.log('[Merge] All videos downloaded successfully');
 
-    // Bước 2: Lưu các video vào file tạm
+    // Step 2: Save videos to temp files
     const tempDir = tmpdir();
     const timestamp = Date.now();
     
@@ -56,45 +58,46 @@ export async function POST(request: Request) {
       })
     );
 
-    console.log('Videos saved to temp files');
+    console.log('[Merge] Videos saved to temp files');
 
-    // Bước 3: Tạo file concat list cho FFmpeg
+    // Step 3: Create concat list for FFmpeg
     const listFile = join(tempDir, `list_${timestamp}.txt`);
     const listContent = tempVideoFiles
-      .map(f => `file '${f.replace(/'/g, "'\\''")}'`) // Escape single quotes
+      .map(f => `file '${f.replace(/'/g, "'\\''")}'`)
       .join('\n');
     
     await writeFile(listFile, listContent);
     tempFiles.push(listFile);
 
-    console.log('Concat list created');
+    console.log('[Merge] Concat list created');
 
-    // Bước 4: Output file
+    // Step 4: Output file
     const outputFile = join(tempDir, `merged_${timestamp}.mp4`);
     tempFiles.push(outputFile);
 
-    // Bước 5: Thực hiện ghép video với FFmpeg
-    console.log('Starting FFmpeg merge...');
+    // Step 5: Merge videos with FFmpeg
+    // Using -c copy for fast merging without re-encoding
+    console.log('[Merge] Starting FFmpeg merge...');
     
     const ffmpegCommand = `ffmpeg -f concat -safe 0 -i "${listFile}" -c copy "${outputFile}"`;
     
     try {
       await execAsync(ffmpegCommand);
-      console.log('FFmpeg merge completed successfully');
+      console.log('[Merge] FFmpeg merge completed successfully');
     } catch (error: any) {
-      console.error('FFmpeg error:', error);
+      console.error('[Merge] FFmpeg error:', error);
       throw new Error(`FFmpeg failed: ${error.message}`);
     }
 
-    // Bước 6: Đọc file đã ghép
+    // Step 6: Read merged file
     const mergedBuffer = await readFile(outputFile);
-    console.log(`Merged video size: ${mergedBuffer.length} bytes`);
+    console.log(`[Merge] Merged video size: ${(mergedBuffer.length / 1024 / 1024).toFixed(2)} MB`);
 
-    // Bước 7: Dọn dẹp file tạm
+    // Step 7: Cleanup temp files
     await Promise.all(tempFiles.map(f => unlink(f).catch(() => {})));
-    console.log('Temp files cleaned up');
+    console.log('[Merge] Temp files cleaned up');
 
-    // Bước 8: Trả về video đã ghép
+    // Step 8: Return merged video
     return new NextResponse(mergedBuffer, {
       headers: {
         'Content-Type': 'video/mp4',
@@ -104,9 +107,9 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Video merge error:', error);
+    console.error('[Merge] Video merge error:', error);
     
-    // Dọn dẹp file tạm trong trường hợp lỗi
+    // Cleanup temp files on error
     await Promise.all(tempFiles.map(f => unlink(f).catch(() => {})));
     
     return NextResponse.json(
